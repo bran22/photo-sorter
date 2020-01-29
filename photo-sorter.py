@@ -119,6 +119,9 @@ threshold = args.threshold
 
 # run
 print('---begin photo sorting---')
+if not source.is_dir():
+  print('file path does not exist, quitting...')
+  quit()
 movedFiles, deletedFolders, failedMoves, failedDeletes = unNestPhotos(source)
 print(f'{movedFiles} files un-nested, {deletedFolders} empty folders deleted')
 print(f'{failedMoves} files could not be moved, so {failedDeletes} folders were left unempty')
