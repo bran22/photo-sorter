@@ -2,6 +2,7 @@ from pathlib import Path
 from datetime import datetime
 import argparse
 import exifread
+import time
 
 def unNestPhotos(sourcePath: Path):
   movedFileCount = 0
@@ -125,6 +126,7 @@ threshold = args.threshold
 
 # run
 print('---begin photo sorting---')
+startTime = time.process_time()
 if not source.is_dir():
   print('file path does not exist, quitting...')
   quit()
@@ -139,4 +141,6 @@ print(f'{moved} photos sorted into {created} folders')
 print('issues:')
 print(f'- skipped the following days due to having fewer photos than threshold of {threshold}:\n{skippedDays}')
 print(f'- skipped the following files due to missing or bad date format:\n{skippedFiles}')
+endTime = time.process_time()
+print(f'process took {endTime - startTime} seconds')
 print('---end photo sorting---')
