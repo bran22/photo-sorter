@@ -11,14 +11,20 @@ def unNestPhotos(sourcePath: Path):
   # loop through everything in the source directory
   for pathName in sourcePath.iterdir():
     if pathName.is_dir():
-      # if we found a directory, move all its contents up a level
+      # recursively un-nest any subdirectories first
+      movedFiles, deletedFolders, failedMoves, failedDeletes = unNestPhotos(pathName)
+      movedFileCount += movedFiles
+      deletedFolderCount += deletedFolders
+      failedMoveCount += failedMoves
+      failedDeleteCount += failedDeletes
+      # for all files in a directory, move all its contents up a level
       for file in pathName.iterdir():
         destination = file.parents[1] / file.name
         try:
           file.rename(destination)
           movedFileCount += 1 # count how many files were moved
         except:
-          failedMoveCount += 1
+          failedMoveCount += 1 # count failures too
       # check if directory is empty. if so, delete it
       if isDirectoryEmpty(pathName):
         pathName.rmdir()
