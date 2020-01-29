@@ -6,18 +6,34 @@ import exifread
 def unNestPhotos(sourcePath: Path):
   movedFileCount = 0
   deletedFolderCount = 0
+  failedMoveCount = 0
+  failedDeleteCount = 0
   # loop through everything in the source directory
   for pathName in sourcePath.iterdir():
     if pathName.is_dir():
       # if we found a directory, move all its contents up a level
       for file in pathName.iterdir():
         destination = file.parents[1] / file.name
-        file.rename(destination)
-        movedFileCount += 1 # count how many files were moved
-      # delete the empty directory
-      pathName.rmdir()
-      deletedFolderCount += 1 # count how many directories were deleted
-  return movedFileCount, deletedFolderCount
+        try:
+          file.rename(destination)
+          movedFileCount += 1 # count how many files were moved
+        except:
+          failedMoveCount += 1
+      # check if directory is empty. if so, delete it
+      if isDirectoryEmpty(pathName):
+        pathName.rmdir()
+        deletedFolderCount += 1 # count how many directories were deleted
+      else:
+        failedDeleteCount += 1
+  return movedFileCount, deletedFolderCount, failedMoveCount, failedDeleteCount
+
+def isDirectoryEmpty(sourcePath: Path):
+  # check if a directory is empty, returning boolean
+  hasNext = next(sourcePath.iterdir(), None)
+  if hasNext is None:
+    return True
+  else:
+    return False
 
 def getPhotosAndDates(sourcePath: Path):
   photoList = []
@@ -103,8 +119,9 @@ threshold = args.threshold
 
 # run
 print('---begin photo sorting---')
-movedFiles, deletedFolders = unNestPhotos(source)
+movedFiles, deletedFolders, failedMoves, failedDeletes = unNestPhotos(source)
 print(f'{movedFiles} files un-nested, {deletedFolders} empty folders deleted')
+print(f'{failedMoves} files could not be moved, so {failedDeletes} folders were left unempty')
 print('indexing photos...')
 photos, dates, skippedFiles = getPhotosAndDates(source)
 print(f'{len(photos)} photos found, taken on {len(dates)} different days')
