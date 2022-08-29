@@ -113,34 +113,37 @@ def folderizeByDate(photos, dates, threshold, destinationPath):
       daysSkipped.append(str(date))
   return daysCreated, photosSorted, daysSkipped,
 
+def main():
+  # set up CLI argument parser
+  parser = argparse.ArgumentParser(description='Un-nests all photos in a directory, and sorts them into new directories based on the Date Taken EXIF tag.')
+  parser.add_argument('path', type=str, help='File path to a directory of unsorted photos')
+  parser.add_argument('threshold', nargs='?', type=int, default=3, help='Minimum number of photos (taken on the same day) that warrants the creation of a folder.  Default is 3.')
+  args = parser.parse_args()
 
-# set up CLI argument parser
-parser = argparse.ArgumentParser(description='Un-nests all photos in a directory, and sorts them into new directories based on the Date Taken EXIF tag.')
-parser.add_argument('path', type=str, help='File path to a directory of unsorted photos')
-parser.add_argument('threshold', nargs='?', type=int, default=3, help='Minimum number of photos (taken on the same day) that warrants the creation of a folder.  Default is 3.')
-args = parser.parse_args()
+  # get settings from arguments
+  source = Path(args.path)
+  threshold = args.threshold
 
-# get settings from arguments
-source = Path(args.path)
-threshold = args.threshold
+  # run
+  print('---begin photo sorting---')
+  startTime = time.process_time()
+  if not source.is_dir():
+    print('file path does not exist, quitting...')
+    quit()
+  movedFiles, deletedFolders, failedMoves, failedDeletes = unNestPhotos(source)
+  print(f'{movedFiles} files un-nested, {deletedFolders} empty folders deleted')
+  print(f'{failedMoves} files could not be moved, so {failedDeletes} folders were left unempty')
+  print('indexing photos...')
+  photos, dates, skippedFiles = getPhotosAndDates(source)
+  print(f'{len(photos)} photos found, taken on {len(dates)} different days')
+  created, moved, skippedDays = folderizeByDate(photos, dates, threshold, source)
+  print(f'{moved} photos sorted into {created} folders')
+  print('issues:')
+  print(f'- skipped the following days due to having fewer photos than threshold of {threshold}:\n{skippedDays}')
+  print(f'- skipped the following files due to missing or bad date format:\n{skippedFiles}')
+  endTime = time.process_time()
+  print(f'process took {endTime - startTime} seconds')
+  print('---end photo sorting---')
 
-# run
-print('---begin photo sorting---')
-startTime = time.process_time()
-if not source.is_dir():
-  print('file path does not exist, quitting...')
-  quit()
-movedFiles, deletedFolders, failedMoves, failedDeletes = unNestPhotos(source)
-print(f'{movedFiles} files un-nested, {deletedFolders} empty folders deleted')
-print(f'{failedMoves} files could not be moved, so {failedDeletes} folders were left unempty')
-print('indexing photos...')
-photos, dates, skippedFiles = getPhotosAndDates(source)
-print(f'{len(photos)} photos found, taken on {len(dates)} different days')
-created, moved, skippedDays = folderizeByDate(photos, dates, threshold, source)
-print(f'{moved} photos sorted into {created} folders')
-print('issues:')
-print(f'- skipped the following days due to having fewer photos than threshold of {threshold}:\n{skippedDays}')
-print(f'- skipped the following files due to missing or bad date format:\n{skippedFiles}')
-endTime = time.process_time()
-print(f'process took {endTime - startTime} seconds')
-print('---end photo sorting---')
+if __name__ == "__main__":
+  main()
