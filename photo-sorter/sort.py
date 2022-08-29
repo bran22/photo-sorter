@@ -1,6 +1,6 @@
 from pathlib import Path
 from datetime import datetime
-import argparse
+import click
 import exifread
 import time
 
@@ -99,7 +99,7 @@ def folderizeByDate(photos, dates, threshold, destinationPath):
     photosTakenOnDate = list(filter(lambda photo: datetime.date(photo['date']) == date, photos))
     # print(photosTakenOnDate)
     # if the number of photos taken on that date is greater than a threshold, make a folder with that date name
-    if len(photosTakenOnDate) > threshold:
+    if len(photosTakenOnDate) >= threshold:
       dateAsString = date.strftime('%Y-%m-%d')
       newFolder = destinationPath / dateAsString
       newFolder.mkdir(parents=False, exist_ok=False)
@@ -113,30 +113,33 @@ def folderizeByDate(photos, dates, threshold, destinationPath):
       daysSkipped.append(str(date))
   return daysCreated, photosSorted, daysSkipped,
 
-def main():
-  # set up CLI argument parser
-  parser = argparse.ArgumentParser(description='Un-nests all photos in a directory, and sorts them into new directories based on the Date Taken EXIF tag.')
-  parser.add_argument('path', type=str, help='File path to a directory of unsorted photos')
-  parser.add_argument('threshold', nargs='?', type=int, default=3, help='Minimum number of photos (taken on the same day) that warrants the creation of a folder.  Default is 3.')
-  args = parser.parse_args()
-
-  # get settings from arguments
-  source = Path(args.path)
-  threshold = args.threshold
-
-  # run
+@click.command()
+@click.argument(
+  'path',
+  type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path)
+)
+@click.option(
+  '--threshold',
+  type=int,
+  default=3,
+  help='Minimum number of photos (taken on the same day) that warrants the creation of a subdirectory.  Default is 3.'
+)
+def main(path, threshold):
+  """
+  Sorts photos from the specified directory PATH into date-named subdirectories based on the Date Taken EXIF tag embedded in the photos.
+  """
   print('---begin photo sorting---')
   startTime = time.process_time()
-  if not source.is_dir():
+  if not path.is_dir():
     print('file path does not exist, quitting...')
     quit()
-  movedFiles, deletedFolders, failedMoves, failedDeletes = unNestPhotos(source)
+  movedFiles, deletedFolders, failedMoves, failedDeletes = unNestPhotos(path)
   print(f'{movedFiles} files un-nested, {deletedFolders} empty folders deleted')
   print(f'{failedMoves} files could not be moved, so {failedDeletes} folders were left unempty')
   print('indexing photos...')
-  photos, dates, skippedFiles = getPhotosAndDates(source)
+  photos, dates, skippedFiles = getPhotosAndDates(path)
   print(f'{len(photos)} photos found, taken on {len(dates)} different days')
-  created, moved, skippedDays = folderizeByDate(photos, dates, threshold, source)
+  created, moved, skippedDays = folderizeByDate(photos, dates, threshold, path)
   print(f'{moved} photos sorted into {created} folders')
   print('issues:')
   print(f'- skipped the following days due to having fewer photos than threshold of {threshold}:\n{skippedDays}')
