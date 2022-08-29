@@ -1,8 +1,8 @@
 from pathlib import Path
 from datetime import datetime
 import click
-import exifread
 import time
+from photo_sorter.exif_utils import get_exif_date_taken
 
 def unNestPhotos(sourcePath: Path):
   movedFileCount = 0
@@ -50,7 +50,7 @@ def getPhotosAndDates(sourcePath: Path):
   for pathName in sourcePath.iterdir():
     # if file, add pathname and date to to the dictionary list
     if pathName.is_file():
-      photoDate = getPhotoTakenDate(pathName)
+      photoDate = get_exif_date_taken(pathName)
       # print(f'path: {pathName}')
       if photoDate is not None:
         # don't add to the photo list if exif photo taken data is missing
@@ -71,23 +71,7 @@ def getPhotosAndDates(sourcePath: Path):
   sortedUniqueDates = sorted(uniqueDates)
   return sortedPhotoList, sortedUniqueDates, skippedPhotos
 
-def getPhotoTakenDate(imgPath: Path):
-  img = open(imgPath, 'rb')
-  tags = exifread.process_file(img)
-  # need to cast tag data to string, since it's a funky format
-  dateTakenTag = str(tags.get("EXIF DateTimeOriginal"))
-  try:
-    return datetime.strptime(dateTakenTag, '%Y:%m:%d %H:%M:%S')
-  except:
-    return None # if exif tag data is missing, don't return a date
 
-def getPhotoExifData(imgPath: Path):
-  # reads out all the non-gigantic tags so you know what those keys will be called
-  img = open(imgPath, 'rb')
-  tags = exifread.process_file(img)
-  for tag in tags.keys():
-    if tag not in ('JPEGThumbnail', 'TIFFThumbnail', 'Filename', 'EXIF MakerNote'):
-        print("Key: %s, value %s" % (tag, tags[tag]))
 
 def folderizeByDate(photos, dates, threshold, destinationPath):
   daysCreated = 0 # counter of folders created to sort photos into it
