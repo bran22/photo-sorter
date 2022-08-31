@@ -1,46 +1,10 @@
 from pathlib import Path
 from datetime import datetime
+from operator import itemgetter
 import click
 import time
 from photo_sorter.exif_utils import get_exif_date_taken
-
-def unNestPhotos(sourcePath: Path):
-  movedFileCount = 0
-  deletedFolderCount = 0
-  failedMoveCount = 0
-  failedDeleteCount = 0
-  # loop through everything in the source directory
-  for pathName in sourcePath.iterdir():
-    if pathName.is_dir():
-      # recursively un-nest any subdirectories first
-      movedFiles, deletedFolders, failedMoves, failedDeletes = unNestPhotos(pathName)
-      movedFileCount += movedFiles
-      deletedFolderCount += deletedFolders
-      failedMoveCount += failedMoves
-      failedDeleteCount += failedDeletes
-      # for all files in a directory, move all its contents up a level
-      for file in pathName.iterdir():
-        destination = file.parents[1] / file.name
-        try:
-          file.rename(destination)
-          movedFileCount += 1 # count how many files were moved
-        except:
-          failedMoveCount += 1 # count failures too
-      # check if directory is empty. if so, delete it
-      if isDirectoryEmpty(pathName):
-        pathName.rmdir()
-        deletedFolderCount += 1 # count how many directories were deleted
-      else:
-        failedDeleteCount += 1
-  return movedFileCount, deletedFolderCount, failedMoveCount, failedDeleteCount
-
-def isDirectoryEmpty(sourcePath: Path):
-  # check if a directory is empty, returning boolean
-  hasNext = next(sourcePath.iterdir(), None)
-  if hasNext is None:
-    return True
-  else:
-    return False
+from photo_sorter.directory_utils import unnest_directory
 
 def getPhotosAndDates(sourcePath: Path):
   photoList = []
@@ -117,9 +81,10 @@ def main(path, threshold):
   if not path.is_dir():
     print('file path does not exist, quitting...')
     quit()
-  movedFiles, deletedFolders, failedMoves, failedDeletes = unNestPhotos(path)
-  print(f'{movedFiles} files un-nested, {deletedFolders} empty folders deleted')
-  print(f'{failedMoves} files could not be moved, so {failedDeletes} folders were left unempty')
+  counters = unnest_directory(path)
+  moved_files, deleted_folders, failed_moves, failed_deletes = itemgetter('moved', 'deleted', 'failed_move', 'failed_delete')(counters)
+  print(f'{moved_files} files un-nested, {deleted_folders} empty folders deleted')
+  print(f'{failed_moves} files could not be moved, so {failed_deletes} folders were left unempty')
   print('indexing photos...')
   photos, dates, skippedFiles = getPhotosAndDates(path)
   print(f'{len(photos)} photos found, taken on {len(dates)} different days')
